@@ -1,0 +1,115 @@
+unit Unit1;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Data.DB, FireDAC.Stan.Intf,
+  FireDAC.Stan.Option, FireDAC.Stan.Param, FireDAC.Stan.Error, FireDAC.DatS,
+  FireDAC.Phys.Intf, FireDAC.DApt.Intf, FireDAC.Comp.DataSet,
+  FireDAC.Comp.Client, Vcl.ExtCtrls, Vcl.DBCtrls, Vcl.Grids, Vcl.DBGrids, vcl.GraphUtil;
+
+type
+  TForm1 = class(TForm)
+    DBGrid1: TDBGrid;
+    DataSource1: TDataSource;
+    DBNavigator1: TDBNavigator;
+    FDMemTable1: TFDMemTable;
+    FDMemTable1FullName: TStringField;
+    FDMemTable1TotalExams: TIntegerField;
+    FDMemTable1PassedExams: TIntegerField;
+    FDMemTable1PercPassedExams: TFloatField;
+    FDMemTable1MoreThan50Percent: TBooleanField;
+    procedure FormCreate(Sender: TObject);
+    procedure FDMemTable1CalcFields(DataSet: TDataSet);
+    procedure DBGrid1DrawColumnCell(Sender: TObject; const Rect: TRect;
+      DataCol: Integer; Column: TColumn; State: TGridDrawState);
+  private
+    { Private declarations }
+  public
+    { Public declarations }
+  end;
+
+var
+  Form1: TForm1;
+
+implementation
+
+{$R *.dfm}
+
+procedure TForm1.DBGrid1DrawColumnCell(Sender: TObject; const Rect: TRect;
+  DataCol: Integer; Column: TColumn; State: TGridDrawState);
+var
+  R : TRect;
+  Grid : TDBGrid;
+  s : String;
+  WPerc : Extended;
+  SSize : TSize;
+  SavedPenColor : integer;
+  SavedBrushColor : integer;
+  SavedPenStyle : TPenStyle;
+  SavedBrushStyle : TBrushStyle;
+begin
+  Grid := TDBGrid(Sender);
+  if [gdSelected,gdFocused] * State <> [] then
+    Grid.Canvas.Brush.Color := clHighlight;
+
+  if Column.Field.FieldKind = fkCalculated then
+  begin
+    R := Rect;
+    SavedPenColor := Grid.Canvas.Pen.Color;
+    SavedBrushColor := Grid.Canvas.Brush.Color;
+    SavedPenStyle := Grid.Canvas.Pen.Style;
+    SavedBrushStyle := Grid.Canvas.Brush.Style;
+  end;
+
+  if Column.FieldName.Equals('PercPassedExams') then
+  begin
+    S := FormatFloat('##0', Column.Field.AsFloat) + ' %';
+    Grid.Canvas.Brush.Style := bsSolid;
+    Grid.Canvas.FillRect(R);
+    WPerc := Column.Field.AsFloat / 100 * R.Width;
+    Grid.Canvas.Font.Size := Grid.Font.Size - 1;
+    Grid.Canvas.Font.Color := clWhite;
+    Grid.Canvas.Brush.Color := clYellow;
+    Grid.Canvas.RoundRect(R.Left, R.Top, Trunc(R.Left + WPerc), R.Bottom,2,2);
+    InflateRect(R,-1,-1);
+  end;
+end;
+
+procedure TForm1.FDMemTable1CalcFields(DataSet: TDataSet);
+var
+  p : integer;
+  t : integer;
+begin
+  p := FDMemTable1.FieldByName('PassedExams').AsInteger;
+  t := FDMemTable1.FieldByName('TotalExams').AsInteger;
+  if t = 0 then
+    begin
+      FDMemTable1.FieldByName('PercPassedExams').AsFloat := 0;
+    end
+  else
+    begin
+      FDMemTable1.FieldByName('PercPassedExams').AsFloat := p / t * 100;
+    end;
+
+  FDMemTable1.FieldByName('MoreThan50Percent').AsBoolean := FDMemTable1.FieldByName('PercPassedExams').AsFloat > 50;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  FDMemTable1.InsertRecord(
+        ['Ludwig van Beethoven',30,10]);
+  FDMemTable1.InsertRecord(
+        ['Johan Sebastian Bach',24,10]);
+  FDMemTable1.InsertRecord(
+        ['Woflgan Amadeus Mozart',30,30]);
+  FDMemTable1.InsertRecord(
+        ['Giacomo Puccini',25,10]);
+  FDMemTable1.InsertRecord(
+        ['Antonio Vivaldi',20,20]);
+  FDMemTable1.InsertRecord(
+        ['Giuseppe Verdi',30,5]);
+end;
+
+end.
